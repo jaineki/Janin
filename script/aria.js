@@ -29,7 +29,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     // Call the Aria API
-    const apiUrl = `https://restapijay.up.railway.app/api/aria?ask=${encodeURIComponent(prompt)}&uid=${uid}`;
+    const apiUrl = `https://pasayloakomego.onrender.com/api/aria?ask=${encodeURIComponent(prompt)}&uid=${uid}`;
     
     const response = await axios.get(apiUrl, { 
       timeout: 30000,

@@ -59,18 +59,16 @@ module.exports.run = async function ({ api, event, args }) {
     // If no prompt provided
     if (!prompt) {
       if (mediaUrl) {
-        prompt = `Please describe what you see in this ${mediaType}. Describe the scene, objects, people, actions, colors, and any text visible. Be detailed and descriptive.`;
+        prompt = `Describe this ${mediaType} in detail`;
       } else {
         return api.sendMessage(
           "🤖 AI CHIP - MULTI MODE\n━━━━━━━━━━━━━━━━\n\n" +
           "📝 TEXT CHAT:\n" +
-          "/aichip <your question>\n" +
-          "Example: /aichip what model are you?\n\n" +
-          "📹 VIDEO/IMAGE ANALYSIS:\n" +
-          "1. Reply to a video/image\n" +
-          "2. Type: /aichip describe this\n\n" +
-          "📎 OR send media with caption:\n" +
-          "Send video/image with /aichip in caption",
+          "/aichip <your question>\n\n" +
+          "📹 VIDEO ANALYSIS:\n" +
+          "Reply to a video with /aichip describe this\n\n" +
+          "🖼️ IMAGE ANALYSIS:\n" +
+          "Reply to an image with /aichip describe this",
           threadID,
           messageID
         );
@@ -87,76 +85,92 @@ module.exports.run = async function ({ api, event, args }) {
     const user = await api.getUserInfo(senderID);
     const senderName = user[senderID]?.name || "User";
 
-    // Build API URL with stronger prompt for media
-    const apiKey = "d48ff6e54c518a8ff88fb11b6aa938508e5d4fb65479d8605527a95375ad7faa";
-    
-    let finalPrompt = prompt;
-    
-    // If media is present, enhance the prompt to force description
-    if (mediaUrl) {
-      finalPrompt = `Analyze this ${mediaType} and provide a detailed description. Describe exactly what you see: the setting, objects, people, actions, colors, mood, and any notable details. Do NOT return a URL or link. Give only the description in plain text. Question: ${prompt}`;
-    }
-    
     let apiUrl;
-    
+    let reply;
+    const apiKey = "d48ff6e54c518a8ff88fb11b6aa938508e5d4fb65479d8605527a95375ad7faa";
+
     if (mediaUrl) {
-      // With media
-      apiUrl = `https://apiremake-production.up.railway.app/api/chipp?ask=${encodeURIComponent(finalPrompt)}&uid=${senderID}&roleplay=&img_url=${encodeURIComponent(mediaUrl)}&api_key=${apiKey}`;
-    } else {
-      // Text only
-      apiUrl = `https://apiremake-production.up.railway.app/api/chipp?ask=${encodeURIComponent(finalPrompt)}&uid=${senderID}&roleplay=&api_key=${apiKey}`;
-    }
+      if (mediaType === "video") {
+        // VIDEO ANALYSIS - Using your apiremake API
+        const finalPrompt = `Analyze this video and provide a detailed description. Describe exactly what you see: the setting, objects, people, actions, colors, mood, and any notable details. Do NOT return a URL or link. Question: ${prompt}`;
+        
+        apiUrl = `https://apiremake-production.up.railway.app/api/chipp?ask=${encodeURIComponent(finalPrompt)}&uid=${senderID}&roleplay=&img_url=${encodeURIComponent(mediaUrl)}&api_key=${apiKey}`;
+        
+        const response = await axios.get(apiUrl);
+        reply = response.data;
 
-    // Call the API
-    const response = await axios.get(apiUrl);
-    
-    let reply = response.data;
-
-    // Handle JSON response
-    if (typeof reply === "string") {
-      try {
-        reply = JSON.parse(reply);
-      } catch (e) {
-        // Not JSON, keep as string
+        // Handle JSON response
+        if (typeof reply === "string") {
+          try { reply = JSON.parse(reply); } catch (e) {}
+        }
+        if (reply && typeof reply === "object") {
+          reply = reply.answer || reply.response || reply.reply || reply.message || reply.result || reply.text || "";
+        }
+        
+      } else {
+        // IMAGE ANALYSIS - Using dur4nto-yeager API
+        apiUrl = `https://www.dur4nto-yeager.rf.gd/mahi/prompt?imgUrl=${encodeURIComponent(mediaUrl)}`;
+        
+        const response = await axios.get(apiUrl);
+        const data = response.data;
+        
+        if (data && data.success === true) {
+          reply = data.prompt || "";
+        } else {
+          reply = "";
+        }
       }
-    }
+      
+    } else {
+      // TEXT CHAT - Using apiremake API with memory
+      if (!memory[threadID]) memory[threadID] = [];
+      memory[threadID].push(`${senderName}: ${prompt}`);
+      const history = memory[threadID].slice(-6).join("\n");
+      const finalPrompt = `${history}\nAI:`;
+      
+      apiUrl = `https://apiremake-production.up.railway.app/api/chipp?ask=${encodeURIComponent(finalPrompt)}&uid=${senderID}&api_key=${apiKey}`;
+      
+      const response = await axios.get(apiUrl);
+      reply = response.data;
 
-    // Extract the actual answer
-    if (reply && typeof reply === "object") {
-      reply = reply.answer || reply.response || reply.reply || reply.message || reply.result || reply.text || "";
+      if (typeof reply === "string") {
+        try { reply = JSON.parse(reply); } catch (e) {}
+      }
+      if (reply && typeof reply === "object") {
+        reply = reply.answer || reply.response || reply.message || "";
+      }
+      
+      memory[threadID].push(`AI: ${reply}`);
     }
 
     reply = String(reply).trim();
 
-    // FIX: Remove any URLs from the response
+    // Remove any URLs and extra parameters from the response
     reply = reply.replace(/https?:\/\/[^\s]+/g, '');
-    reply = reply.replace(/http?:\/\/[^\s]+/g, '');
-    
-    // Clean up extra spaces from URL removal
+    reply = reply.replace(/--ar\s+\d+:\d+/g, '');
+    reply = reply.replace(/--q\s+\d+/g, '');
+    reply = reply.replace(/--s\s+\d+/g, '');
     reply = reply.replace(/\s+/g, ' ').trim();
 
-    // Format into paragraphs (split by double newline or period-space)
+    // Format into paragraphs
     if (!reply.includes('\n\n')) {
-      // Split long text into paragraphs every 2-3 sentences
       const sentences = reply.split('. ');
       let paragraphs = [];
       let currentPara = [];
       
       for (let i = 0; i < sentences.length; i++) {
         currentPara.push(sentences[i]);
-        
         if (currentPara.length >= 3 || i === sentences.length - 1) {
           paragraphs.push(currentPara.join('. ') + (i === sentences.length - 1 ? '' : '.'));
           currentPara = [];
         }
       }
-      
       reply = paragraphs.join('\n\n');
     }
 
     if (!reply || reply === "") {
       return api.editMessage(
-        "❌ AI couldn't generate a description. Try again with a different video or question.",
+        "❌ Couldn't generate a description. Try again.",
         processingMsg.messageID,
         threadID
       );
@@ -166,24 +180,15 @@ module.exports.run = async function ({ api, event, args }) {
     let responseMessage = `🤖 AI CHIP ANALYSIS\n━━━━━━━━━━━━━━━━\n\n`;
     
     if (mediaUrl) {
-      responseMessage += `📹 Video Description:\n\n`;
+      responseMessage += mediaType === "video" ? `📹 Video Description:\n\n` : `🖼️ Image Description:\n\n`;
     }
     
     responseMessage += `${reply}\n\n━━━━━━━━━━━━━━━━`;
 
-    // Edit the processing message with the result
-    await api.editMessage(
-      responseMessage,
-      processingMsg.messageID,
-      threadID
-    );
+    await api.editMessage(responseMessage, processingMsg.messageID, threadID);
 
   } catch (err) {
     console.error(err);
-    api.sendMessage(
-      `❌ Error:\n${err.message}`,
-      threadID,
-      messageID
-    );
+    api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };

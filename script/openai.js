@@ -38,7 +38,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     // Call the API
-    const apiUrl = `https://restapijay.up.railway.app/api/jay?prompt=${encodeURIComponent(prompt)}&uid=${senderID}`;
+    const apiUrl = `https://pasayloakomego.onrender.com/api/jay?prompt=${encodeURIComponent(prompt)}&uid=${senderID}`;
     
     const response = await axios.get(apiUrl, { timeout: 30000 });
     

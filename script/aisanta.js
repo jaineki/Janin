@@ -30,7 +30,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     // Step 1: Get AI response from ChatGPT API
-    const aiUrl = `https://restapijay.onrender.com/api/Chatgpt?prompt=${encodeURIComponent(prompt)}&uid=${senderID}`;
+    const aiUrl = `https://pasayloakomego.onrender.com/api/Chatgpt?prompt=${encodeURIComponent(prompt)}&uid=${senderID}`;
     
     const aiResponse = await axios.get(aiUrl, { timeout: 20000 });
     
@@ -54,7 +54,7 @@ module.exports.run = async function ({ api, event, args }) {
     }
     
     // Step 2: Convert AI response to TTS
-    const ttsUrl = `https://restapijay.onrender.com/api/svara/tts?text=${encodeURIComponent(aiText)}&voice=Santa`;
+    const ttsUrl = `https://pasayloakomego.onrender.com/api/svara/tts?text=${encodeURIComponent(aiText)}&voice=Santa`;
     
     const ttsResponse = await axios.get(ttsUrl, { timeout: 30000 });
     

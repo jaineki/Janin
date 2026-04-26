@@ -71,6 +71,31 @@
         .container { max-width: 900px; margin-top: 20px; }
         textarea.form-control { height: 120px; background: white; border: 2px solid #e0e0e0; border-radius: 20px; padding: 15px; }
         .centered-textarea { text-align: left; }
+
+        /* GCash Section Styles */
+        .donation-card {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .qr-code-img {
+            max-width: 250px;
+            width: 100%;
+            border-radius: 15px;
+            margin: 15px 0;
+            border: 5px solid #007bff;
+        }
+        .gcash-info {
+            font-size: 1.1rem;
+            color: #333;
+            margin-top: 10px;
+        }
+        .gcash-info b {
+            color: #007bff;
+        }
     </style>
 </head>
 <body>
@@ -121,6 +146,18 @@
         <p>* No Malicious Use: Malicious activity will result in termination and potential legal action.</p>
         <p> * Disclaimers: We are not responsible for unauthorized access, account locking, or hosting platform actions.</p>
         <p>* Terms of Service: Adhere to hosting platform terms.</p>
+
+        <!-- GCash Donation Section -->
+        <div class="donation-card">
+            <h2 style="font-size: 22px; color: #007bff; font-weight: 700;">💙 SUPPORT THE BOT</h2>
+            <p>Your support helps keep this bot running 24/7!</p>
+            <img src="https://i.ibb.co/gMjZ1Vwb/GCash-My-QR-25042026215040-PNG.jpg" alt="GCash QR Code" class="qr-code-img">
+            <div class="gcash-info">
+                <p>👤 Name: <b>JU***Y B.</b></p>
+                <p>📞 Mobile: <b>+63 991 774 1567</b></p>
+            </div>
+            <p class="text-muted small mt-2">Scan the QR code above to donate via GCash</p>
+        </div>
 
         <div class="container" id="listOfCommands">
             <h1 style="font-size: 16px; padding: 10px;">Please choose your commands by tapping on the respective options.</h1>

@@ -9,7 +9,7 @@ const COOLDOWN_MS = COOLDOWN_MINUTES * 60 * 1000;
 module.exports.config = {
   name: "smsbomb",
   version: "6.0.0",
-  role: 2,
+  role: 0,
   credits: "selov",
   description: "SMS bombing tool for Philippine numbers (30-min cooldown per number)",
   commandCategory: "utility",

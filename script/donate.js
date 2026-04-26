@@ -20,8 +20,9 @@ module.exports.run = async function ({ api, event }) {
     const user = await api.getUserInfo(senderID);
     const senderName = user[senderID]?.name || "User";
 
-    // QR code image path
-    const qrPath = path.join(__dirname, "https://i.ibb.co/gMjZ1Vwb/GCash-My-QR-25042026215040-PNG.jpg");
+    // Fixed QR code image URL and local path logic
+    const qrUrl = "https://i.ibb.co/gMjZ1Vwb/GCash-My-QR-25042026215040-PNG.jpg";
+    const qrPath = path.join(__dirname, "cache", "gcash_qr.jpg");
 
     const donateMessage = `💙 DONATE TO IMPROVE THE BOT\n━━━━━━━━━━━━━━━━━━━━\n\n` +
       `Hey ${senderName}! 👋\n\n` +
@@ -35,29 +36,31 @@ module.exports.run = async function ({ api, event }) {
       `📞 Mobile: +63 991 774 1567\n\n` +
       `👇 Scan the QR code below to donate:`;
 
-    // Send QR image if exists
-    if (fs.existsSync(qrPath)) {
-      await api.sendMessage(
-        {
-          body: donateMessage,
-          attachment: fs.createReadStream(qrPath)
-        },
-        threadID,
-        messageID
-      );
-    } else {
-      // Fallback: text only
-      api.sendMessage(
-        donateMessage + `\n\n⚠️ QR image not found. Please use the mobile number above.`,
-        threadID,
-        messageID
-      );
+    // Ensure cache directory exists
+    if (!fs.existsSync(path.join(__dirname, "cache"))) {
+      fs.mkdirSync(path.join(__dirname, "cache"));
     }
+
+    // Download image if it doesn't exist locally
+    if (!fs.existsSync(qrPath)) {
+      const response = await axios.get(qrUrl, { responseType: 'arraybuffer' });
+      fs.writeFileSync(qrPath, Buffer.from(response.data, 'binary'));
+    }
+
+    // Send QR image
+    await api.sendMessage(
+      {
+        body: donateMessage,
+        attachment: fs.createReadStream(qrPath)
+      },
+      threadID,
+      messageID
+    );
 
   } catch (err) {
     console.error(err);
     api.sendMessage(
-      `❌ Error: ${err.message}`,
+      `❌ Error: ${err.message}\n\n📱 GCASH DETAILS:\n👤 Name: JU***Y B.\n📞 Mobile: +63 991 774 1567`,
       threadID,
       messageID
     );

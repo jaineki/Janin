@@ -111,7 +111,7 @@ module.exports.run = async function ({ api, event, args }) {
 
     // Call the Vern REST API
     const response = await axios.get(
-      `https://vern-rest-api.vercel.app/api/chatgpt4?prompt=${encodeURIComponent(fullPrompt)}`,
+      `https://pasayloakomego.onrender.com/api/chatgptsearch?prompt=${encodeURIComponent(fullPrompt)}`,
       { timeout: 30000 }
     );
 

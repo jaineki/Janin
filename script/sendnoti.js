@@ -5,7 +5,7 @@ const ADMIN_UIDS = ["61556388598622", "61561982970881"];
 
 module.exports.config = {
   name: "sendnoti",
-  version: "1.0.0",
+  version: "1.1.0",
   hasPermssion: 2, // Only admins (permission level 2) can use this command
   credits: "Manus",
   description: "Sends a notification message to all group chats the bot is in.",
@@ -36,17 +36,29 @@ module.exports.run = async function ({ api, event, args }) {
   const failedThreads = [];
 
   try {
-    // Get all threads the bot is part of. Max 100 threads, filtering for INBOX.
+    // Inform the admin that the process has started
+    await api.sendMessage("⏳ Sending notification to all group chats...", threadID);
+
+    // Get all threads the bot is part of. 
+    // The ws3-fca getThreadList returns an array of thread objects.
     const allThreads = await api.getThreadList(100, null, ["INBOX"]); 
 
+    if (!allThreads || !Array.isArray(allThreads)) {
+      return api.sendMessage("❌ Failed to retrieve the thread list.", threadID, messageID);
+    }
+
     for (const thread of allThreads) {
-      // Only send to group chats and exclude the current thread where the command was issued
+      // Filter for group chats and exclude the current thread
+      // ws3-fca thread objects use 'isGroup' (boolean) and 'threadID' (string)
       if (thread.isGroup && thread.threadID !== threadID) {
         try {
           await api.sendMessage(`📢 **NOTIFICATION FROM ADMIN**\n━━━━━━━━━━━━━━\n${message}`, thread.threadID);
           successCount++;
+          
+          // Optional: Add a small delay to avoid spam triggers
+          await new Promise(resolve => setTimeout(resolve, 500)); 
         } catch (error) {
-          console.error(`Failed to send message to thread ${thread.threadID}: ${error.message}`);
+          console.error(`Failed to send message to thread ${thread.threadID}:`, error);
           failCount++;
           failedThreads.push(thread.threadID);
         }
@@ -55,12 +67,13 @@ module.exports.run = async function ({ api, event, args }) {
 
     let replyMessage = `✅ Sent notification to ${successCount} group chats.`;
     if (failCount > 0) {
-      replyMessage += `\n❌ Failed to send to ${failCount} group chats: ${failedThreads.join(", ")}.`;
+      replyMessage += `\n❌ Failed to send to ${failCount} group chats.`;
     }
+    
     api.sendMessage(replyMessage, threadID, messageID);
 
   } catch (err) {
-    console.error(err);
+    console.error("Error in sendnoti command:", err);
     api.sendMessage(
       `❌ An error occurred while sending notifications: ${err.message}`,
       threadID,

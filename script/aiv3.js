@@ -18,7 +18,7 @@ module.exports.config = {
 if (!global.aiv3Memory) global.aiv3Memory = {};
 
 // API endpoints
-const CHAT_API = "https://pasayloakomego.onrender.com/api/chatgptfree";
+const CHAT_API = "https://pasayloakomego.onrender.com/api/chatgpt"; // Updated Chat API
 const TTS_API = "https://pasayloakomego.onrender.com/api/api/ai/tsundere";
 
 module.exports.run = async function ({ api, event, args }) {
@@ -34,12 +34,11 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     // Step 1: Get AI response from ChatGPT API
-    const aiUrl = `${CHAT_API}?prompt=${encodeURIComponent(prompt)}`;
+    const aiUrl = `${CHAT_API}?prompt=${encodeURIComponent(prompt)}&uid=${senderID}`; // Added uid parameter
     
     const aiResponse = await axios.get(aiUrl, { timeout: 30000 });
     
-    let aiText = aiResponse.data?.result?.answer || 
-                 aiResponse.data?.answer || 
+    let aiText = aiResponse.data?.response || 
                  "Sorry, I couldn't process that request.";
     
     // Store in memory

@@ -21,7 +21,7 @@ module.exports.run = async function ({ api, event }) {
     const senderName = user[senderID]?.name || "User";
 
     // QR code image path
-    const qrPath = path.join(__dirname, "https://i.ibb.co/gMjZ1Vwb/GCash-My-QR-25042026215040-PNG.jpg[");
+    const qrPath = path.join(__dirname, "https://i.ibb.co/gMjZ1Vwb/GCash-My-QR-25042026215040-PNG.jpg");
 
     const donateMessage = `💙 DONATE TO IMPROVE THE BOT\n━━━━━━━━━━━━━━━━━━━━\n\n` +
       `Hey ${senderName}! 👋\n\n` +

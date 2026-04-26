@@ -3,41 +3,16 @@ const axios = require('axios');
 module.exports.config = {
   name: "gpt",
   version: "5.0.0",
-  role: 0,
+  hasPermssion: 0,
   credits: "selov",
   description: "AI-powered Bible study assistant with empathetic responses",
   commandCategory: "religion",
-  usages: "/gpt <question>",
-  cooldowns: 3,
-  aliases: ["gptai", "ask"]
+  usages: "gpt <question>",
+  cooldowns: 3
 };
 
 // Store user conversation history
 if (!global.bibleAIUsers) global.bibleAIUsers = {};
-
-// Bible context for the AI - with proper emotional awareness
-const BIBLE_CONTEXT = `You are BibleGPT, a compassionate AI assistant focused on answering questions about the Bible, theology, and Christian living.
-
-IMPORTANT RULES:
-1. Base your answers on Scripture.
-2. Be EMOTIONALLY AWARE and EMPATHETIC:
-   - If the user mentions sin, guilt, sadness, or mistakes → Be gentle, compassionate, and offer hope (DO NOT use cheerful greetings like "Ang saya naman")
-   - If the user mentions joy or gratitude → Be warm and cheerful (can use "Ang saya naman" or similar)
-   - Match the user's emotional tone
-3. FORMATTING RULES (CRITICAL):
-   - If your answer is LONG (more than 3 sentences) → Format as TWO PARAGRAPHS with a blank line between them
-   - If your answer is SHORT (3 sentences or less) → Format as ONE PARAGRAPH only
-   - Example of two paragraphs:
-     "First paragraph content here.
-     
-     Second paragraph content here."
-4. Use Taglish (Tagalog + English) naturally
-5. Always offer hope and point to God's grace
-
-EMOTIONAL GUIDELINES:
-- For sin/guilt topics: "Alam kong hindi madali..." / "Naiintindihan ko ang bigat na nadarama mo..." / "God's grace is sufficient..."
-- For sad topics: "I'm sorry to hear that..." / "Nakikiisa ako sa iyo..."
-- For joyful topics: "Ang saya naman!" / "That's wonderful to hear!"`;
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
@@ -45,131 +20,127 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!userQuestion) {
     return api.sendMessage(
-      `📖 BibleGPT\n━━━━━━━━━━━━━━━━\n` +
+      `📖 BIBLE GPT\n━━━━━━━━━━━━━━━━\n` +
       `Ask me anything about the Bible!\n\n` +
       `Examples:\n` +
-      `• /biblegpt What does the Bible say about forgiveness?\n` +
-      `• /biblegpt Explain John 3:16\n` +
-      `• /biblegpt How can I grow in faith?\n` +
-      `• /biblegpt Nagkasala ako, ano ang gagawin ko?`,
+      `• gpt What does the Bible say about forgiveness?\n` +
+      `• gpt Explain John 3:16\n` +
+      `• gpt How can I grow in faith?\n` +
+      `• gpt Nagkasala ako, ano ang gagawin ko?`,
       threadID,
       messageID
     );
   }
 
-  // Initialize user memory if not exists
+  // Initialize user memory
   if (!global.bibleAIUsers[senderID]) {
-    global.bibleAIUsers[senderID] = {
-      history: [],
-      lastQuestion: null
-    };
+    global.bibleAIUsers[senderID] = [];
   }
 
-  // Get user info for personalization
+  // Get user name
   let userName = "kaibigan";
   try {
     const userInfo = await api.getUserInfo(senderID);
     userName = userInfo[senderID]?.name?.split(' ')[0] || "kaibigan";
-  } catch (e) {}
+  } catch (e) {
+    console.error("Get user info error:", e);
+  }
 
   try {
-    // Detect emotional tone from question
-    let emotionalContext = "";
-    const sadKeywords = ["nagkasala", "kasalanan", "sad", "malungkot", "guilty", "error", "mistake", "failure", "mali", "pagsisisi", "kasalanan", "sorry", "patawad"];
+    // Detect emotional tone
+    const sadKeywords = ["nagkasala", "kasalanan", "sad", "malungkot", "guilty", "error", "mistake", "failure", "mali", "pagsisisi", "sorry", "patawad", "kasalanan"];
     const happyKeywords = ["salamat", "thank", "grateful", "saya", "happy", "blessed", "pinagpala", "maganda", "masaya"];
     
     const lowerQuestion = userQuestion.toLowerCase();
-    const isSad = sadKeywords.some(keyword => lowerQuestion.includes(keyword));
-    const isHappy = happyKeywords.some(keyword => lowerQuestion.includes(keyword));
+    const isSad = sadKeywords.some(k => lowerQuestion.includes(k));
+    const isHappy = happyKeywords.some(k => lowerQuestion.includes(k));
     
+    let emotionalContext = "";
     if (isSad) {
-      emotionalContext = "The user is expressing guilt, sadness, or concern about sin. Be GENTLE, COMPASSIONATE, and offer HOPE. DO NOT use cheerful greetings like 'Ang saya naman'. Start with empathy like: 'Alam kong hindi madali ang pinagdadaanan mo...' or 'Naiintindihan ko ang bigat na nadarama mo...'";
+      emotionalContext = "The user is expressing guilt, sadness, or concern. Be GENTLE and COMPASSIONATE. Offer hope. Start with empathy.";
     } else if (isHappy) {
-      emotionalContext = "The user seems joyful or grateful. You can be warm and cheerful. You may use greetings like 'Ang saya naman!'";
+      emotionalContext = "The user seems joyful or grateful. Be warm and cheerful.";
     } else {
-      emotionalContext = "Neutral tone. Be warm and helpful. Do not use overly cheerful greetings unless the user seems happy.";
+      emotionalContext = "Neutral tone. Be warm and helpful.";
     }
-    
-    // Add conversation history for context
-    const recentHistory = global.bibleAIUsers[senderID].history.slice(-3);
-    
-    let fullPrompt = `${BIBLE_CONTEXT}\n\n`;
-    
-    // Add conversation history if exists
-    if (recentHistory.length > 0) {
-      fullPrompt += `Previous conversation:\n`;
-      for (const entry of recentHistory) {
-        fullPrompt += `User: ${entry.question}\n`;
-        fullPrompt += `Assistant: ${entry.answer}\n\n`;
+
+    // Build conversation history
+    const history = global.bibleAIUsers[senderID].slice(-4);
+    let historyText = "";
+    if (history.length > 0) {
+      historyText = history.map(h => `User: ${h.question}\nAI: ${h.answer}`).join("\n") + "\n";
+    }
+
+    // Build prompt
+    const fullPrompt = `You are BibleGPT, a compassionate Bible study assistant. Use Taglish naturally. Be empathetic.
+${emotionalContext}
+Conversation history:
+${historyText}
+${userName} asks: ${userQuestion}
+Provide a Bible-based, empathetic response.`;
+
+    // Call API
+    const apiUrl = `https://pasayloakomego.onrender.com/api/chatgptsearch?prompt=${encodeURIComponent(fullPrompt)}`;
+    const response = await axios.get(apiUrl, { timeout: 30000 });
+
+    let answer = "Sorry, I couldn't generate a response.";
+
+    if (response.data) {
+      if (typeof response.data === "string") {
+        answer = response.data;
+      } else {
+        answer = response.data.result || response.data.response || 
+                 response.data.message || response.data.answer || answer;
       }
     }
-    
-    // Add current question with user's name and emotional context
-    fullPrompt += `EMOTIONAL CONTEXT: ${emotionalContext}\n\n`;
-    fullPrompt += `User: ${userName} asked: ${userQuestion}\n\n`;
-    fullPrompt += `Assistant: Provide a Bible-based response that is emotionally appropriate. Follow the formatting rules: use TWO PARAGRAPHS with blank line for long answers, ONE PARAGRAPH for short answers.`;
 
-    // Call the Vern REST API
-    const response = await axios.get(
-      `https://pasayloakomego.onrender.com/api/chatgptsearch?prompt=${encodeURIComponent(fullPrompt)}`,
-      { timeout: 30000 }
-    );
+    answer = String(answer).trim();
 
-    let answer = response.data?.result || 
-                 response.data?.response || 
-                 response.data?.message || 
-                 response.data?.answer ||
-                 "I'm sorry, I couldn't generate a response. Please try again.";
+    // Clean up formatting
+    answer = answer.replace(/```/g, '');
+    answer = answer.replace(/\s+/g, ' ').trim();
 
-    // Clean up the answer
-    answer = answer.replace(/```/g, '').trim();
-
-    // Ensure proper paragraph formatting
-    // Count sentences to determine if it's a long answer
-    const sentenceCount = (answer.match(/[.!?]+/g) || []).length;
-    
-    // If answer is long (more than 3 sentences) and doesn't have paragraph breaks, try to split it
-    if (sentenceCount > 3 && !answer.includes('\n\n')) {
-      // Find a good place to split (after a sentence ending with period)
+    // Format into paragraphs for long answers
+    if (answer.length > 200 && !answer.includes('\n\n')) {
       const sentences = answer.match(/[^.!?]+[.!?]+/g);
-      if (sentences && sentences.length > 1) {
-        // Calculate split point (around halfway)
-        const splitPoint = Math.ceil(sentences.length / 2);
-        const firstPara = sentences.slice(0, splitPoint).join(' ').trim();
-        const secondPara = sentences.slice(splitPoint).join(' ').trim();
-        
-        if (secondPara.length > 0) {
-          answer = `${firstPara}\n\n${secondPara}`;
-        }
+      if (sentences && sentences.length > 3) {
+        const mid = Math.ceil(sentences.length / 2);
+        const firstHalf = sentences.slice(0, mid).join(' ').trim();
+        const secondHalf = sentences.slice(mid).join(' ').trim();
+        answer = `${firstHalf}\n\n${secondHalf}`;
       }
     }
 
-    // Store conversation in memory
-    global.bibleAIUsers[senderID].history.push({
+    if (!answer || answer === "") {
+      return api.sendMessage("❌ Empty response. Try again.", threadID, messageID);
+    }
+
+    // Store in memory
+    global.bibleAIUsers[senderID].push({
       question: userQuestion,
       answer: answer,
       timestamp: Date.now()
     });
 
-    // Limit history to last 20 exchanges
-    if (global.bibleAIUsers[senderID].history.length > 20) {
-      global.bibleAIUsers[senderID].history.shift();
+    // Keep memory manageable
+    if (global.bibleAIUsers[senderID].length > 20) {
+      global.bibleAIUsers[senderID] = global.bibleAIUsers[senderID].slice(-10);
     }
 
-    // Send the answer
-    return api.sendMessage(answer, threadID, messageID);
+    // Send answer
+    api.sendMessage(answer, threadID, messageID);
 
   } catch (err) {
     console.error("BibleGPT Error:", err);
     
-    let errorMsg = "❌ Sorry, I couldn't generate a response. Please try again.";
+    let errorMsg = "❌ Sorry, something went wrong. Please try again.";
     
     if (err.response?.status === 400) {
-      errorMsg = "❌ Invalid request. Please try a different question.";
+      errorMsg = "❌ Invalid request. Try a different question.";
     } else if (err.code === 'ECONNABORTED') {
       errorMsg = "❌ Request timed out. Please try again.";
     }
     
-    return api.sendMessage(errorMsg, threadID, messageID);
+    api.sendMessage(errorMsg, threadID, messageID);
   }
 };

@@ -72,7 +72,6 @@
         textarea.form-control { height: 120px; background: white; border: 2px solid #e0e0e0; border-radius: 20px; padding: 15px; }
         .centered-textarea { text-align: left; }
 
-        /* GCash Section Styles */
         .donation-card {
             background: white;
             border-radius: 20px;
@@ -95,6 +94,18 @@
         }
         .gcash-info b {
             color: #007bff;
+        }
+
+        /* Update Notice Style */
+        .update-notice {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -125,6 +136,11 @@
     </nav>
 
     <div class="container">
+        <!-- Update Notice -->
+        <div class="update-notice">
+            <i class="fas fa-info-circle"></i> Note: If the bot goes offline sometimes, it means the website is being updated, commands are being fixed, or the server is restarting. 
+        </div>
+
         <h1 class="col text-center" style="font-size: 30px; padding: 10px;">ENTER APPSTATE</h1>
         <form id="json-form" onsubmit="submitForm(event)">
             <div class="row">
@@ -147,14 +163,13 @@
         <p> * Disclaimers: We are not responsible for unauthorized access, account locking, or hosting platform actions.</p>
         <p>* Terms of Service: Adhere to hosting platform terms.</p>
 
-        <!-- GCash Donation Section -->
         <div class="donation-card">
-            <h2 style="font-size: 22px; color: #007bff; font-weight: 700;">💙 SUPPORT THE AUTOBOT WEB</h2>
+            <h2 style="font-size: 22px; color: #007bff; font-weight: 700;"> SUPPORT THE AUTOBOT WEB</h2>
             <p>Your support helps improve this autobot site.</p>
             <img src="https://i.ibb.co/gMjZ1Vwb/GCash-My-QR-25042026215040-PNG.jpg" alt="GCash QR Code" class="qr-code-img">
             <div class="gcash-info">
-                <p>👤 Name: <b>JU***Y B.</b></p>
-                <p>📞 Mobile: <b>+63 991 774 1567</b></p>
+                <p> Name: <b>JU***Y B.</b></p>
+                <p> Mobile: <b>+63 991 774 1567</b></p>
             </div>
             <p class="text-muted small mt-2">Scan the QR code above to donate via GCash</p>
         </div>
@@ -191,7 +206,7 @@
     <div id="result" class="container text-center" style="display: none;"></div>
     <div class="container footer-note">
         <button class="rainbow-footer-btn" disabled>
-            © 2026 Modify by selov | big credits sa may ari ng fca
+            � 2026 Modify by selov | big credits sa may ari ng fca
         </button>
     </div>
 

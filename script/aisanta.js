@@ -5,7 +5,7 @@ const path = require('path');
 module.exports.config = {
   name: "aisanta",
   version: "1.0.0",
-  role: 3,
+  role: 0,
   credits: "selov",
   description: "AI with voice response (audio only)",
   commandCategory: "ai",

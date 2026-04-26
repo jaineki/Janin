@@ -107,7 +107,7 @@ If they say "gimingaw nako nimo" or similar, respond with warmth and care.
 Respond in Taglish or English naturally. Question: ${prompt}`;
 
     // Get AI response
-    const aiUrl = `https://vern-rest-api.vercel.app/api/chatgpt4?prompt=${encodeURIComponent(enhancedPrompt)}`;
+    const aiUrl = `https://pasayloakomego.onrender.com/api/chatgptsearch?prompt=${encodeURIComponent(enhancedPrompt)}`;
     const aiResponse = await axios.get(aiUrl, { timeout: 20000 });
 
     let replyText = "I'm sorry, I couldn't process that request.";

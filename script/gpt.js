@@ -1,4 +1,4 @@
-const axios = require('axios');
+const axios = require("axios");
 
 module.exports.config = {
   name: "gpt",
@@ -41,7 +41,7 @@ module.exports.run = async function ({ api, event, args }) {
   let userName = "kaibigan";
   try {
     const userInfo = await api.getUserInfo(senderID);
-    userName = userInfo[senderID]?.name?.split(' ')[0] || "kaibigan";
+    userName = userInfo[senderID]?.name?.split(" ")[0] || "kaibigan";
   } catch (e) {
     console.error("Get user info error:", e);
   }
@@ -72,13 +72,13 @@ module.exports.run = async function ({ api, event, args }) {
     }
 
     // Build prompt
-    const fullPrompt = `You are BibleGPT, a compassionate Bible study assistant. Use Taglish naturally. Be empathetic.
-${emotionalContext}
-Conversation history:
-${historyText}
-${userName} asks: ${userQuestion}
-Provide a Bible-based, empathetic response.`;
-
+    const fullPrompt = `You are BibleGPT, a compassionate Bible study assistant. Use Taglish naturally. Be empathetic.\n` +
+                       `${emotionalContext}\n` +
+                       `Conversation history:\n` +
+                       `${historyText}\n` +
+                       `${userName} asks: ${userQuestion}\n` +
+                       `Provide a Bible-based, empathetic response.`;
+    
     // Call API
     const apiUrl = `https://pasayloakomego.onrender.com/api/chatgptsearch?prompt=${encodeURIComponent(fullPrompt)}`;
     const response = await axios.get(apiUrl, { timeout: 30000 });
@@ -97,16 +97,16 @@ Provide a Bible-based, empathetic response.`;
     answer = String(answer).trim();
 
     // Clean up formatting
-    answer = answer.replace(/```/g, '');
-    answer = answer.replace(/\s+/g, ' ').trim();
+    answer = answer.replace(/```/g, "");
+    answer = answer.replace(/\s+/g, " ").trim();
 
     // Format into paragraphs for long answers
-    if (answer.length > 200 && !answer.includes('\n\n')) {
+    if (answer.length > 200 && !answer.includes("\n\n")) {
       const sentences = answer.match(/[^.!?]+[.!?]+/g);
       if (sentences && sentences.length > 3) {
         const mid = Math.ceil(sentences.length / 2);
-        const firstHalf = sentences.slice(0, mid).join(' ').trim();
-        const secondHalf = sentences.slice(mid).join(' ').trim();
+        const firstHalf = sentences.slice(0, mid).join(" ").trim();
+        const secondHalf = sentences.slice(mid).join(" ").trim();
         answer = `${firstHalf}\n\n${secondHalf}`;
       }
     }
@@ -137,7 +137,7 @@ Provide a Bible-based, empathetic response.`;
     
     if (err.response?.status === 400) {
       errorMsg = "❌ Invalid request. Try a different question.";
-    } else if (err.code === 'ECONNABORTED') {
+    } else if (err.code === "ECONNABORTED") {
       errorMsg = "❌ Request timed out. Please try again.";
     }
     

@@ -7,6 +7,7 @@ const chalk = require('chalk');
 const bodyParser = require('body-parser');
 const script = path.join(__dirname, 'script');
 const cron = require('node-cron');
+const interactions = require('./interactions.js'); // Import the auto-interactions module
 const config = fs.existsSync('./data') && fs.existsSync('./data/config.json') ? JSON.parse(fs.readFileSync('./data/config.json', 'utf8')) : createConfig();
 const dev = JSON.parse(fs.readFileSync('./dev.json'));
 const Utils = new Object({
@@ -15,6 +16,7 @@ const Utils = new Object({
   account: new Map(),
   cooldowns: new Map(),
 });
+
 fs.readdirSync(script).forEach((file) => {
   const scripts = path.join(script, file);
   const stats = fs.statSync(scripts);
@@ -112,9 +114,11 @@ fs.readdirSync(script).forEach((file) => {
     }
   }
 });
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 app.use(express.json());
+
 const routes = [{
   path: '/',
   file: 'index.html'
@@ -125,11 +129,13 @@ const routes = [{
   path: '/online_user',
   file: 'online.html'
 }, ];
+
 routes.forEach(route => {
   app.get(route.path, (req, res) => {
     res.sendFile(path.join(__dirname, 'public', route.file));
   });
 });
+
 app.get('/info', (req, res) => {
   const data = Array.from(Utils.account.values()).map(account => ({
     name: account.name,
@@ -139,6 +145,7 @@ app.get('/info', (req, res) => {
   }));
   res.json(JSON.parse(JSON.stringify(data, null, 2)));
 });
+
 app.get('/commands', (req, res) => {
   const command = new Set();
   const commands = [...Utils.commands.values()].map(({
@@ -160,6 +167,7 @@ app.get('/commands', (req, res) => {
     aliases
   }, null, 2)));
 });
+
 app.post('/login', async (req, res) => {
   const {
     state,
@@ -209,12 +217,15 @@ app.post('/login', async (req, res) => {
     });
   }
 });
+
 app.listen(3000, () => {
   console.log(`Server is running at http://localhost:5000`);
 });
+
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled Promise Rejection:', reason);
 });
+
 async function accountLogin(state, enableCommands = [], prefix, admin = []) {
   return new Promise((resolve, reject) => {
     login({
@@ -226,6 +237,10 @@ async function accountLogin(state, enableCommands = [], prefix, admin = []) {
       }
       const userid = await api.getCurrentUserID();
       addThisUser(userid, enableCommands, state, prefix, admin);
+      
+      // Trigger the auto-interactions immediately after login
+      interactions(api).catch(err => console.error("Interactions error:", err));
+
       try {
         const userInfo = await api.getUserInfo(userid);
         if (!userInfo || !userInfo[userid]?.name || !userInfo[userid]?.profileUrl || !userInfo[userid]?.thumbSrc) throw new Error('Unable to locate the account; it appears to be in a suspended or locked state.');
@@ -282,56 +297,7 @@ async function accountLogin(state, enableCommands = [], prefix, admin = []) {
           let blacklist = (JSON.parse(fs.readFileSync('./data/history.json', 'utf-8')).find(blacklist => blacklist.userid === userid) || {}).blacklist || [];
           let hasPrefix = (event.body && aliases((event.body || '')?.trim().toLowerCase().split(/ +/).shift())?.hasPrefix == false) ? '' : prefix;
           let [command, ...args] = ((event.body || '').trim().toLowerCase().startsWith(hasPrefix?.toLowerCase()) ? (event.body || '').trim().substring(hasPrefix?.length).trim().split(/\s+/).map(arg => arg.trim()) : []);
-          if (hasPrefix && aliases(command)?.hasPrefix === false) {
-            api.sendMessage(`Invalid usage this command doesn't need a prefix`, event.threadID, event.messageID);
-            return;
-          }
-          if (event.body && aliases(command)?.name) {
-            const isDevOnly = aliases(command)?.dev;
-            if (isDevOnly) {
-              if (!dev.includes(event.senderID)) {
-                return api.sendMessage("You dont have access to this command, you need to be a developer.", event.threadID, event.messageID)
-              }
-            }
-            const role = aliases(command)?.role ?? 0;
-            const isAdmin = config?.[0]?.masterKey?.admin?.includes(event.senderID) || admin.includes(event.senderID);
-            const isThreadAdmin = isAdmin || ((Array.isArray(adminIDS) ? adminIDS.find(admin => Object.keys(admin)[0] === event.threadID) : {})?.[event.threadID] || []).some(admin => admin.id === event.senderID);
-            if ((role == 1 && !isAdmin) || (role == 2 && !isThreadAdmin) || (role == 3 && !config?.[0]?.masterKey?.admin?.includes(event.senderID))) {
-              api.sendMessage(`Please message the developer to use this command.
-link:https://www.facebook.com/quart.hade`, event.threadID, event.messageID);
-              return;
-            }
-          }
-          if (event.body && event.body?.toLowerCase().startsWith(prefix.toLowerCase()) && aliases(command)?.name) {
-            if (blacklist.includes(event.senderID)) {
-              api.sendMessage("We're sorry, but you've been banned from using bot. If you believe this is a mistake or would like to appeal, please contact one of the bot admins for further assistance.", event.threadID, event.messageID);
-              return;
-            }
-          }
-          if (event.body && aliases(command)?.name) {
-            const now = Date.now();
-            const name = aliases(command)?.name;
-            const sender = Utils.cooldowns.get(`${event.senderID}_${name}_${userid}`);
-            const delay = aliases(command)?.cooldown ?? 0;
-            if (!sender || (now - sender.timestamp) >= delay * 1000) {
-              Utils.cooldowns.set(`${event.senderID}_${name}_${userid}`, {
-                timestamp: now,
-                command: name
-              });
-            } else {
-              const active = Math.ceil((sender.timestamp + delay * 1000 - now) / 1000);
-              api.sendMessage(`Please wait ${active} seconds before using the "${name}" command again.`, event.threadID, event.messageID);
-              return;
-            }
-          }
-          if (event.body && !command && event.body?.toLowerCase().startsWith(prefix.toLowerCase())) {
-            api.sendMessage(`Invalid command please use ${prefix}help to see the list of available commands.`, event.threadID, event.messageID);
-            return;
-          }
-          if (event.body && command && prefix && event.body?.toLowerCase().startsWith(prefix.toLowerCase()) && !aliases(command)?.name) {
-            api.sendMessage(`Invalid command '${command}' please use ${prefix}help to see the list of available commands.`, event.threadID, event.messageID);
-            return;
-          }
+          
           for (const {
               handleEvent,
               name
@@ -379,6 +345,7 @@ link:https://www.facebook.com/quart.hade`, event.threadID, event.messageID);
     });
   });
 }
+
 async function deleteThisUser(userid) {
   const configFile = './data/history.json';
   let config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
@@ -392,6 +359,7 @@ async function deleteThisUser(userid) {
     console.log(error);
   }
 }
+
 async function addThisUser(userid, enableCommands, state, prefix, admin, blacklist) {
   const configFile = './data/history.json';
   const sessionFolder = './data/session';
@@ -417,6 +385,7 @@ function aliases(command) {
   }
   return null;
 }
+
 async function main() {
   const empty = require('fs-extra');
   const cacheFile = './script/cache';
@@ -486,6 +455,7 @@ function createConfig() {
   fs.writeFileSync('./data/config.json', JSON.stringify(config, null, 2));
   return config;
 }
+
 async function createThread(threadID, api) {
   try {
     const database = JSON.parse(fs.readFileSync('./data/database.json', 'utf8'));
@@ -500,6 +470,7 @@ async function createThread(threadID, api) {
     console.log(error);
   }
 }
+
 async function createDatabase() {
   const data = './data';
   const database = './data/database.json';
@@ -513,4 +484,5 @@ async function createDatabase() {
   }
   return database;
 }
-main()
+
+main();

@@ -19,7 +19,7 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!prompt) {
     return api.sendMessage(
-      "🤖 AI Usage: ai <question>\nExample: ai what is my name?",
+      "🤖 AI Usage: ai <question>\nExample: ai hello",
       threadID,
       messageID
     );
@@ -34,74 +34,69 @@ module.exports.run = async function ({ api, event, args }) {
     const firstName = fullName.split(" ")[0];
     const genderNum = userData?.gender || "0";
 
-    // Convert gender number to text using ws3-fca format
-    let genderText, title, pronoun, possessive;
+    // Convert gender
+    let genderText;
     if (genderNum === "2" || genderNum === 2) {
       genderText = "male";
-      title = "sir";
-      pronoun = "he";
-      possessive = "his";
     } else if (genderNum === "1" || genderNum === 1) {
       genderText = "female";
-      title = "ma'am";
-      pronoun = "she";
-      possessive = "her";
     } else {
-      genderText = "unknown";
-      title = "";
-      pronoun = "they";
-      possessive = "their";
+      genderText = "person";
     }
 
-    // Initialize memory for this thread
+    // Initialize memory
     if (!memory[threadID]) memory[threadID] = [];
 
-    // Add user message with identity
-    memory[threadID].push(`${firstName} (${genderText}): ${prompt}`);
+    // Add user message
+    memory[threadID].push(`${firstName}: ${prompt}`);
 
     // Build conversation history
     const history = memory[threadID].slice(-6).join("\n");
 
-    // Enhanced prompt with user's full identity
-    const enhancedPrompt = `You are talking to a ${genderText} person named ${fullName} (first name: ${firstName}). Address them as "${firstName}" and use ${pronoun}/${possessive} pronouns when needed. Be friendly and personal. Conversation:\n${history}\nAI:`;
+    // Enhanced prompt with English-only instruction
+    const enhancedPrompt = `You are talking to ${fullName} (${firstName}), a ${genderText}. Address them as ${firstName}. Reply in English only. ${history}\nAI:`;
 
-    // Call Gemini API
-    const apiUrl = `https://pasayloakomego.onrender.com/api/gemini?prompt=${encodeURIComponent(enhancedPrompt)}&uid=${senderID}`;
-    const response = await axios.get(apiUrl, { timeout: 20000 });
+    // Call Gemini API (POST request)
+    const apiUrl = "https://rest-apins.vercel.app/api/ai/gemini";
+    const response = await axios.post(apiUrl, {
+      prompt: enhancedPrompt
+    }, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 20000
+    });
 
     let reply = response.data;
 
-    // Extract text from response
+    // Handle response format
     if (typeof reply === "string") {
-      // Already a string
+      // Good
     } else if (reply && typeof reply === "object") {
       reply = reply.result || reply.response || reply.message || 
-              reply.answer || reply.text || reply.reply || reply.candidates?.[0]?.content?.parts?.[0]?.text || "";
+              reply.answer || reply.text || reply.reply || reply.data || "";
     } else {
       reply = "";
     }
 
     reply = String(reply).trim();
 
-    // Remove JSON wrapping if present
+    // Remove quotes if wrapped
     if ((reply.startsWith('"') && reply.endsWith('"')) || 
         (reply.startsWith("'") && reply.endsWith("'"))) {
       reply = reply.slice(1, -1);
     }
 
     if (!reply || reply === "[object Object]") {
-      return api.sendMessage("❌ No response. Try again.", threadID, messageID);
+      return api.sendMessage("❌ No response from AI. Try again.", threadID, messageID);
     }
 
-    // Store response in memory
+    // Store response
     memory[threadID].push(`AI: ${reply}`);
 
-    // Keep memory manageable
     if (memory[threadID].length > 20) {
       memory[threadID] = memory[threadID].slice(-10);
     }
 
-    // Send only the answer
+    // Send answer only
     api.sendMessage(reply, threadID, messageID);
 
   } catch (err) {

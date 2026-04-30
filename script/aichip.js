@@ -22,6 +22,11 @@ module.exports.run = async function ({ api, event, args }) {
     let mediaUrl = null;
     let mediaType = null;
 
+    // Get user info
+    const user = await api.getUserInfo(senderID);
+    const senderName = user[senderID]?.name || "User";
+    const firstName = senderName.split(" ")[0];
+
     // CASE 1: Check if replied to a message with media
     if (messageReply) {
       const repliedAttachment = messageReply.attachments?.[0];
@@ -64,11 +69,13 @@ module.exports.run = async function ({ api, event, args }) {
         return api.sendMessage(
           "🤖 AI CHIP - MULTI MODE\n━━━━━━━━━━━━━━━━\n\n" +
           "📝 TEXT CHAT:\n" +
-          "/aichip <your question>\n\n" +
-          "📹 VIDEO ANALYSIS:\n" +
-          "Reply to a video with /aichip describe this\n\n" +
-          "🖼️ IMAGE ANALYSIS:\n" +
-          "Reply to an image with /aichip describe this",
+          "/aichip <your question>\n" +
+          "Example: /aichip what model are you?\n\n" +
+          "📹 VIDEO/IMAGE ANALYSIS:\n" +
+          "1. Reply to a video/image\n" +
+          "2. Type: /aichip describe this\n\n" +
+          "📎 OR send media with caption:\n" +
+          "Send video/image with /aichip in caption",
           threadID,
           messageID
         );
@@ -77,118 +84,109 @@ module.exports.run = async function ({ api, event, args }) {
 
     // Send processing message
     const processingMsg = await api.sendMessage(
-      mediaUrl ? `🎬 Analyzing ${mediaType}... This may take a moment.` : "🤔 Thinking... Please wait.",
+      mediaUrl ? `🎬 Analyzing ${mediaType}... Please wait.` : "🤔 Thinking... Please wait.",
       threadID
     );
 
-    // Get sender name
-    const user = await api.getUserInfo(senderID);
-    const senderName = user[senderID]?.name || "User";
+    // Initialize memory
+    if (!memory[threadID]) memory[threadID] = [];
 
-    let apiUrl;
-    let reply;
-    const apiKey = "d48ff6e54c518a8ff88fb11b6aa938508e5d4fb65479d8605527a95375ad7faa";
+    // Add user message to memory
+    memory[threadID].push(`${firstName}: ${prompt}`);
 
+    // Build conversation history
+    const history = memory[threadID].slice(-6).join("\n");
+    const fullPrompt = mediaUrl 
+      ? `${history}\nAnalyze this ${mediaType} and describe it in detail.`
+      : `${history}\nAI:`;
+
+    // Build API URL with new API
+    const apiKey = "ee1b10c17fbcbaaea74deb12d96213b896f2a6daa288af09b9ddb1f1b1ae209d";
+    
+    let apiUrl = `https://oreo.gleeze.com/api/chipp?ask=${encodeURIComponent(fullPrompt)}&uid=${senderID}&roleplay=&stream=false&api_key=${apiKey}`;
+    
+    // Add image URL if media present
     if (mediaUrl) {
-      if (mediaType === "video") {
-        // VIDEO ANALYSIS - Using your apiremake API
-        const finalPrompt = `Analyze this video and provide a detailed description. Describe exactly what you see: the setting, objects, people, actions, colors, mood, and any notable details. Do NOT return a URL or link. Question: ${prompt}`;
-        
-        apiUrl = `https://apiremake-production.up.railway.app/api/chipp?ask=${encodeURIComponent(finalPrompt)}&uid=${senderID}&roleplay=&img_url=${encodeURIComponent(mediaUrl)}&api_key=${apiKey}`;
-        
-        const response = await axios.get(apiUrl);
-        reply = response.data;
+      apiUrl += `&img_url=${encodeURIComponent(mediaUrl)}`;
+    }
 
-        // Handle JSON response
-        if (typeof reply === "string") {
-          try { reply = JSON.parse(reply); } catch (e) {}
-        }
-        if (reply && typeof reply === "object") {
-          reply = reply.answer || reply.response || reply.reply || reply.message || reply.result || reply.text || "";
-        }
-        
-      } else {
-        // IMAGE ANALYSIS - Using dur4nto-yeager API
-        apiUrl = `https://www.dur4nto-yeager.rf.gd/mahi/prompt?imgUrl=${encodeURIComponent(mediaUrl)}`;
-        
-        const response = await axios.get(apiUrl);
-        const data = response.data;
-        
-        if (data && data.success === true) {
-          reply = data.prompt || "";
-        } else {
-          reply = "";
-        }
-      }
-      
+    // Call the API
+    const response = await axios.get(apiUrl, { timeout: 30000 });
+    
+    let reply = response.data;
+
+    // Handle response format
+    if (typeof reply === "string") {
+      // Good
+    } else if (reply && typeof reply === "object") {
+      reply = reply.response || reply.reply || reply.message || 
+              reply.answer || reply.result || reply.text || "";
     } else {
-      // TEXT CHAT - Using apiremake API with memory
-      if (!memory[threadID]) memory[threadID] = [];
-      memory[threadID].push(`${senderName}: ${prompt}`);
-      const history = memory[threadID].slice(-6).join("\n");
-      const finalPrompt = `${history}\nAI:`;
-      
-      apiUrl = `https://apiremake-production.up.railway.app/api/chipp?ask=${encodeURIComponent(finalPrompt)}&uid=${senderID}&api_key=${apiKey}`;
-      
-      const response = await axios.get(apiUrl);
-      reply = response.data;
-
-      if (typeof reply === "string") {
-        try { reply = JSON.parse(reply); } catch (e) {}
-      }
-      if (reply && typeof reply === "object") {
-        reply = reply.answer || reply.response || reply.message || "";
-      }
-      
-      memory[threadID].push(`AI: ${reply}`);
+      reply = "";
     }
 
     reply = String(reply).trim();
 
-    // Remove any URLs and extra parameters from the response
+    // Clean up response
     reply = reply.replace(/https?:\/\/[^\s]+/g, '');
-    reply = reply.replace(/--ar\s+\d+:\d+/g, '');
-    reply = reply.replace(/--q\s+\d+/g, '');
-    reply = reply.replace(/--s\s+\d+/g, '');
     reply = reply.replace(/\s+/g, ' ').trim();
 
-    // Format into paragraphs
-    if (!reply.includes('\n\n')) {
-      const sentences = reply.split('. ');
-      let paragraphs = [];
-      let currentPara = [];
-      
-      for (let i = 0; i < sentences.length; i++) {
-        currentPara.push(sentences[i]);
-        if (currentPara.length >= 3 || i === sentences.length - 1) {
-          paragraphs.push(currentPara.join('. ') + (i === sentences.length - 1 ? '' : '.'));
-          currentPara = [];
-        }
-      }
-      reply = paragraphs.join('\n\n');
-    }
-
-    if (!reply || reply === "") {
+    if (!reply || reply === "" || reply === "[object Object]") {
       return api.editMessage(
-        "❌ Couldn't generate a description. Try again.",
+        "❌ AI couldn't generate a response. Try again.",
         processingMsg.messageID,
         threadID
       );
     }
 
+    // Format into paragraphs for long responses
+    if (reply.length > 150 && !reply.includes('\n\n')) {
+      const sentences = reply.match(/[^.!?]+[.!?]+/g);
+      if (sentences && sentences.length > 3) {
+        const mid = Math.ceil(sentences.length / 2);
+        const firstHalf = sentences.slice(0, mid).join(' ').trim();
+        const secondHalf = sentences.slice(mid).join(' ').trim();
+        if (secondHalf) {
+          reply = `${firstHalf}\n\n${secondHalf}`;
+        }
+      }
+    }
+
+    // Store response in memory
+    memory[threadID].push(`AI: ${reply}`);
+
+    // Keep memory manageable
+    if (memory[threadID].length > 20) {
+      memory[threadID] = memory[threadID].slice(-10);
+    }
+
     // Build response message
-    let responseMessage = `🤖 AI CHIP ANALYSIS\n━━━━━━━━━━━━━━━━\n\n`;
+    let responseMessage = "";
     
     if (mediaUrl) {
-      responseMessage += mediaType === "video" ? `📹 Video Description:\n\n` : `🖼️ Image Description:\n\n`;
+      responseMessage += `🤖 AI CHIP ANALYSIS\n━━━━━━━━━━━━━━━━\n\n`;
+      responseMessage += `📹 ${mediaType.charAt(0).toUpperCase() + mediaType.slice(1)} Description:\n\n`;
     }
     
-    responseMessage += `${reply}\n\n━━━━━━━━━━━━━━━━`;
+    responseMessage += reply;
+    
+    if (mediaUrl) {
+      responseMessage += `\n\n━━━━━━━━━━━━━━━━`;
+    }
 
-    await api.editMessage(responseMessage, processingMsg.messageID, threadID);
+    // Edit the processing message with the result
+    await api.editMessage(
+      responseMessage,
+      processingMsg.messageID,
+      threadID
+    );
 
   } catch (err) {
-    console.error(err);
-    api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
+    console.error("AIChip Error:", err.message);
+    api.sendMessage(
+      `❌ Error: ${err.message}`,
+      threadID,
+      messageID
+    );
   }
 };

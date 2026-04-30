@@ -5,7 +5,7 @@ module.exports.config = {
   version: "1.0.0",
   hasPermssion: 0,
   credits: "selov",
-  description: "AI chat with memory",
+  description: "AI that knows your Facebook name and gender",
   commandCategory: "ai",
   usages: "ai <question>",
   cooldowns: 3
@@ -19,34 +19,59 @@ module.exports.run = async function ({ api, event, args }) {
 
   if (!prompt) {
     return api.sendMessage(
-      "📌 AI Usage: ai <question>\nExample: ai what model are you?",
+      "🤖 AI Usage: ai <question>\nExample: ai what is my name?",
       threadID,
       messageID
     );
   }
 
   try {
-    // Get user name
-    const user = await api.getUserInfo(senderID);
-    const senderName = user[senderID]?.name || "User";
+    // Get Facebook user info
+    const userInfo = await api.getUserInfo(senderID);
+    const userData = userInfo[senderID];
+
+    const fullName = userData?.name || "User";
+    const firstName = fullName.split(" ")[0];
+    const genderNum = userData?.gender || "0";
+
+    // Convert gender number to text using ws3-fca format
+    let genderText, title, pronoun, possessive;
+    if (genderNum === "2" || genderNum === 2) {
+      genderText = "male";
+      title = "sir";
+      pronoun = "he";
+      possessive = "his";
+    } else if (genderNum === "1" || genderNum === 1) {
+      genderText = "female";
+      title = "ma'am";
+      pronoun = "she";
+      possessive = "her";
+    } else {
+      genderText = "unknown";
+      title = "";
+      pronoun = "they";
+      possessive = "their";
+    }
 
     // Initialize memory for this thread
     if (!memory[threadID]) memory[threadID] = [];
 
-    // Add user message to memory
-    memory[threadID].push(`${senderName}: ${prompt}`);
+    // Add user message with identity
+    memory[threadID].push(`${firstName} (${genderText}): ${prompt}`);
 
-    // Build conversation history (last 6 messages)
+    // Build conversation history
     const history = memory[threadID].slice(-6).join("\n");
-    const fullPrompt = `${history}\nAI:`;
 
-    // Call the Gemini API
-    const apiUrl = `https://pasayloakomego.onrender.com/api/gemini?prompt=${encodeURIComponent(fullPrompt)}&uid=${senderID}`;
+    // Enhanced prompt with user's full identity
+    const enhancedPrompt = `You are talking to a ${genderText} person named ${fullName} (first name: ${firstName}). Address them as "${firstName}" and use ${pronoun}/${possessive} pronouns when needed. Be friendly and personal. Conversation:\n${history}\nAI:`;
+
+    // Call Gemini API
+    const apiUrl = `https://pasayloakomego.onrender.com/api/gemini?prompt=${encodeURIComponent(enhancedPrompt)}&uid=${senderID}`;
     const response = await axios.get(apiUrl, { timeout: 20000 });
 
     let reply = response.data;
 
-    // Extract text from response (handle all formats)
+    // Extract text from response
     if (typeof reply === "string") {
       // Already a string
     } else if (reply && typeof reply === "object") {
@@ -58,12 +83,17 @@ module.exports.run = async function ({ api, event, args }) {
 
     reply = String(reply).trim();
 
-    // Check for empty or error responses
-    if (!reply || reply === "" || reply === "[object Object]" || reply.includes("500") || reply.includes("error")) {
-      return api.sendMessage("❌ AI is currently unavailable. Please try again later.", threadID, messageID);
+    // Remove JSON wrapping if present
+    if ((reply.startsWith('"') && reply.endsWith('"')) || 
+        (reply.startsWith("'") && reply.endsWith("'"))) {
+      reply = reply.slice(1, -1);
     }
 
-    // Store AI response in memory
+    if (!reply || reply === "[object Object]") {
+      return api.sendMessage("❌ No response. Try again.", threadID, messageID);
+    }
+
+    // Store response in memory
     memory[threadID].push(`AI: ${reply}`);
 
     // Keep memory manageable
@@ -76,11 +106,6 @@ module.exports.run = async function ({ api, event, args }) {
 
   } catch (err) {
     console.error("AI Error:", err.message);
-    
-    if (err.response?.status === 500) {
-      api.sendMessage("❌ AI server is currently down (Error 500). Please try again later.", threadID, messageID);
-    } else {
-      api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
-    }
+    api.sendMessage(`❌ Error: ${err.message}`, threadID, messageID);
   }
 };

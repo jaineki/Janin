@@ -41,7 +41,7 @@ module.exports.run = async function ({ api, event, args }) {
     } else if (genderNum === "1" || genderNum === 1) {
       genderText = "female";
     } else {
-      genderText = "unknown";
+      genderText = "person";
     }
 
     // Initialize memory
@@ -53,28 +53,44 @@ module.exports.run = async function ({ api, event, args }) {
     // Build conversation history
     const history = memory[threadID].slice(-4).join("\n");
 
-    // Enhanced prompt with user identity
-    const enhancedPrompt = `You are a compassionate Bible study assistant. You're talking to ${fullName} (${firstName}), a ${genderText} person. Use Taglish naturally. Be empathetic and biblical. Conversation:\n${history}\nAI:`;
+    // Bible-focused system prompt
+    const systemPrompt = `You are BibleGPT, a compassionate and knowledgeable Bible study assistant. Your purpose is to help people understand the Bible, Christian theology, and spiritual matters. Follow these guidelines:
 
-    // Call Bible GPT API
-    const apiUrl = `https://pasayloakomego.onrender.com/api/biblegpt?q=${encodeURIComponent(enhancedPrompt)}`;
-    const response = await axios.get(apiUrl, { timeout: 20000 });
+1. Base your answers on Scripture whenever possible
+2. Be compassionate, empathetic, and non-judgmental
+3. Use clear and simple English
+4. When appropriate, reference specific Bible verses
+5. Be respectful of all denominations
+6. Offer hope and point to God's love and grace
+7. If someone expresses guilt or sadness, be gentle and offer comfort
+8. If someone expresses joy or gratitude, celebrate with them
+9. Address the user by their name naturally
+10. Keep responses warm and personal
+11. Answer it with Tagalog Language`;
+
+    // Build full prompt with system instructions and conversation
+    const fullPrompt = `${systemPrompt}\n\nYou are talking to ${fullName} (${firstName}), a ${genderText}.\n\nConversation:\n${history}\n\nBibleGPT:`;
+
+    // Call Mistral API
+    const apiUrl = "https://enzoanologylie.vercel.app/api/mistral";
+    const response = await axios.get(apiUrl, {
+      params: { prompt: fullPrompt },
+      timeout: 20000
+    });
 
     let reply = response.data;
 
-    // Extract text
+    // Handle response format
     if (typeof reply === "string") {
       // Good
     } else if (reply && typeof reply === "object") {
       reply = reply.result || reply.response || reply.message || 
-              reply.answer || reply.text || reply.reply || "";
-    } else {
-      reply = "";
+              reply.answer || reply.text || reply.reply || reply.data || "";
     }
 
     reply = String(reply).trim();
 
-    // Clean up
+    // Remove quotes if wrapped
     if ((reply.startsWith('"') && reply.endsWith('"')) || 
         (reply.startsWith("'") && reply.endsWith("'"))) {
       reply = reply.slice(1, -1);
@@ -85,7 +101,7 @@ module.exports.run = async function ({ api, event, args }) {
     }
 
     // Store response
-    memory[threadID].push(`AI: ${reply}`);
+    memory[threadID].push(`BibleGPT: ${reply}`);
 
     if (memory[threadID].length > 20) {
       memory[threadID] = memory[threadID].slice(-10);

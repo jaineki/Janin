@@ -13,101 +13,123 @@ module.exports.config = {
   cooldowns: 2
 };
 
-// Simple memory per thread
-const memory = {};
-
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
-  let query = args.join(" ").trim();
+  const query = args.join(" ").trim();
+
+  if (!query) {
+    return api.sendMessage(
+      "📌 PINTEREST SEARCH\n━━━━━━━━━━━━━━━━\n\n" +
+      "Usage: pinterest <search query>\n\n" +
+      "Example:\n" +
+      "• pinterest baki\n" +
+      "• pinterest anime girl\n" +
+      "• pinterest landscape",
+      threadID,
+      messageID
+    );
+  }
 
   try {
-    // Get sender name
+    // Get user info
     const user = await api.getUserInfo(senderID);
     const senderName = user[senderID]?.name || "User";
 
-    // Initialize memory
-    if (!memory[threadID]) memory[threadID] = [];
-    memory[threadID].push(`${senderName} searched Pinterest for: ${query || "nothing"}`);
+    // Send searching message
+    await api.sendMessage(`🔍 Searching Pinterest for "${query}"... Please wait.`, threadID);
 
-    if (!query) {
-      return api.sendMessage("📌 Please enter a search query.\n\nExample: pinterest cute cats", threadID, messageID);
+    // Call API
+    const apiUrl = `https://api-ownblox.vercel.app/api/pinterest?q=${encodeURIComponent(query)}`;
+    const response = await axios.get(apiUrl, { timeout: 20000 });
+
+    let data = response.data;
+
+    // Handle different response formats
+    let imageUrls = [];
+
+    if (Array.isArray(data)) {
+      imageUrls = data;
+    } else if (data && typeof data === "object") {
+      imageUrls = data.data || data.result || data.results || 
+                  data.images || data.urls || data.image || [];
     }
 
-    api.sendMessage("🔍 Searching Pinterest...", threadID, messageID);
-
-    // Your API with the working key
-    const apiUrl = `https://rapido-api.vercel.app/api/pin?search=${encodeURIComponent(query)}&count=6&apikey=zk-f50c8cb6ab9a0932f90abe0ea147959f227845da812fbeb30c8e114950a3ddd4`;
-    
-    const res = await axios.get(apiUrl);
-    
-    if (!res.data || !res.data.data || res.data.data.length === 0) {
-      return api.sendMessage("❌ No images found for your query.", threadID, messageID);
+    // If single URL returned, wrap in array
+    if (typeof imageUrls === "string") {
+      imageUrls = [imageUrls];
     }
 
-    const imageUrls = res.data.data; // Array of image URLs
-    const attachments = [];
-    const imgPaths = [];
+    // Filter valid URLs only
+    imageUrls = imageUrls.filter(url => 
+      typeof url === "string" && 
+      (url.startsWith("http://") || url.startsWith("https://"))
+    );
 
-    // Create cache directory if it doesn't exist
+    if (imageUrls.length === 0) {
+      return api.sendMessage(
+        `❌ No images found for "${query}".\nTry a different search term.`,
+        threadID,
+        messageID
+      );
+    }
+
+    // Limit to 6 images
+    const selectedUrls = imageUrls.slice(0, 6);
+
+    // Create cache directory
     const cacheDir = path.join(__dirname, "cache");
     if (!fs.existsSync(cacheDir)) {
       fs.mkdirSync(cacheDir, { recursive: true });
     }
 
-    // Download each image
-    for (let i = 0; i < imageUrls.length; i++) {
+    // Download images
+    const attachments = [];
+    const imgPaths = [];
+
+    for (let i = 0; i < selectedUrls.length; i++) {
       try {
-        const imageUrl = imageUrls[i];
-        const imgPath = path.join(cacheDir, `pinterest_${Date.now()}_${i}.jpg`);
+        const imgPath = path.join(cacheDir, `pin_${Date.now()}_${i}.jpg`);
         
-        const img = await axios.get(imageUrl, { 
+        const imgResponse = await axios.get(selectedUrls[i], { 
           responseType: "arraybuffer",
           timeout: 15000 
         });
 
-        fs.writeFileSync(imgPath, img.data);
+        fs.writeFileSync(imgPath, imgResponse.data);
         attachments.push(fs.createReadStream(imgPath));
         imgPaths.push(imgPath);
-      } catch (err) {
-        console.error(`Error downloading image ${i + 1}:`, err.message);
+      } catch (downloadErr) {
+        console.error(`Failed to download image ${i + 1}:`, downloadErr.message);
       }
     }
 
     if (attachments.length === 0) {
-      return api.sendMessage("❌ Failed to download images.", threadID, messageID);
+      return api.sendMessage("❌ Failed to download images. Try again later.", threadID, messageID);
     }
 
-    // Store in memory
-    memory[threadID].push(`Found ${attachments.length} images for "${query}"`);
-
-    // Send the images
+    // Send images
     api.sendMessage(
       {
-        body: `📌 PINTEREST RESULTS\n━━━━━━━━━━━━━━\nQuery: "${query}"\n📸 Found ${attachments.length} image(s)`,
+        body: `📌 PINTEREST RESULTS\n━━━━━━━━━━━━━━━━\n\n🔍 Query: "${query}"\n👤 Requested by: ${senderName}\n📸 Images: ${attachments.length}\n\n✨ Powered by Pinterest`,
         attachment: attachments
       },
       threadID,
       (err) => {
-        if (err) console.error("Error sending message:", err);
-        // Clean up files after sending
-        imgPaths.forEach(imgPath => {
+        if (err) console.error("Send error:", err);
+        // Clean up files
+        imgPaths.forEach(p => {
           try {
-            if (fs.existsSync(imgPath)) {
-              fs.unlinkSync(imgPath);
-            }
-          } catch (e) {
-            console.error("Error deleting file:", e);
-          }
+            if (fs.existsSync(p)) fs.unlinkSync(p);
+          } catch (e) {}
         });
       },
       messageID
     );
 
   } catch (err) {
-    console.error("Pinterest Command Error:", err);
-    
+    console.error("Pinterest Error:", err.message);
     api.sendMessage(
-      `❌ Error: ${err.message}`,
+      `❌ Error: ${err.message}\n\nTry again with a different search.`,
       threadID,
       messageID
     );

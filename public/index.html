@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Selov Facebook Bot </title>
+    <title>Selov Facebook Bot</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
-   <style>
+    <style>
         .rainbow-footer-btn {
             background: transparent;
             border: 2px solid rgba(255,255,255,0.15);
@@ -107,11 +107,125 @@
             text-align: center;
             font-weight: 500;
         }
+
+        /* Suggestion Box Styles */
+        .suggestion-box {
+            background: white;
+            border-radius: 20px;
+            padding: 25px;
+            margin-top: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .suggestion-box h3 {
+            color: #333;
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+
+        .suggestion-box .subtitle {
+            color: #666;
+            font-size: 13px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .suggestion-box .form-control {
+            border-radius: 10px;
+            border: 2px solid #e0e0e0;
+            padding: 10px 15px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .suggestion-box .form-control:focus {
+            border-color: #4e73df;
+            box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.1);
+        }
+
+        .suggestion-box textarea.form-control {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .suggestion-box label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .btn-suggestion {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px;
+            font-weight: 600;
+            border-radius: 10px;
+            color: white;
+            width: 100%;
+            transition: all 0.3s;
+            font-size: 15px;
+        }
+
+        .btn-suggestion:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+            color: white;
+        }
+
+        .btn-suggestion:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .suggestion-alert {
+            padding: 10px;
+            border-radius: 10px;
+            margin-top: 15px;
+            display: none;
+            text-align: center;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .suggestion-alert.show {
+            display: block;
+        }
+
+        .suggestion-alert.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .suggestion-alert.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .spinner-border-sm {
+            width: 1rem;
+            height: 1rem;
+            border-width: 0.15em;
+            margin-right: 5px;
+        }
+
+        .char-counter {
+            font-size: 12px;
+            color: #999;
+            float: right;
+            margin-top: 3px;
+        }
     </style>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <a class="navbar-brand" href="#">Home </a>
+        <a class="navbar-brand" href="#">Home</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -121,7 +235,7 @@
                     <a class="nav-link" href="/">Home <span class="sr-only">(current)</span></a>
                 </li>
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"> Features </a>
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Features</a>
                     <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                         <a class="dropdown-item" href="#">Cookies Extractor</a>
                         <div class="dropdown-divider"></div>
@@ -149,27 +263,27 @@
                 </div>
             </div>
         </form>
-        <p style=" margin-top: 10px">Greetings! Begin by entering your cookie. Scroll down to carefully review our Terms and Privacy.</p>
+        <p style="margin-top: 10px">Greetings! Begin by entering your cookie. Scroll down to carefully review our Terms and Privacy.</p>
     </div>
 
     <div class="container">
         <h1 class="col text-center" style="font-size: 20px; padding: 10px;">Terms and Conditions and Privacy Policy</h1>
         <p>Chatbot Service Guidelines: * Persistent Connection: Your chatbot stays active post-login, unless you change the password.</p>
         <p>* Cookie Security: Never share your cookie; it's vital for your account's security.</p>
-        <p> * Strong Passwords: Use unique, robust passwords. * Avoid Direct Bot Access: Doing so may disrupt service.</p>
-        <p> * Troubleshooting: If the bot is unresponsive, return to the website. If problems persist, change the account.</p>
+        <p>* Strong Passwords: Use unique, robust passwords. * Avoid Direct Bot Access: Doing so may disrupt service.</p>
+        <p>* Troubleshooting: If the bot is unresponsive, return to the website. If problems persist, change the account.</p>
         <p>* Dummy Accounts: Use disposable accounts for added security.</p>
         <p>* No Malicious Use: Malicious activity will result in termination and potential legal action.</p>
-        <p> * Disclaimers: We are not responsible for unauthorized access, account locking, or hosting platform actions.</p>
+        <p>* Disclaimers: We are not responsible for unauthorized access, account locking, or hosting platform actions.</p>
         <p>* Terms of Service: Adhere to hosting platform terms.</p>
 
         <div class="donation-card">
-            <h2 style="font-size: 22px; color: #007bff; font-weight: 700;"> SUPPORT THE AUTOBOT WEB</h2>
+            <h2 style="font-size: 22px; color: #007bff; font-weight: 700;">💙 SUPPORT THE AUTOBOT WEB</h2>
             <p>Your support helps improve this autobot site.</p>
             <img src="https://i.ibb.co/gMjZ1Vwb/GCash-My-QR-25042026215040-PNG.jpg" alt="GCash QR Code" class="qr-code-img">
             <div class="gcash-info">
-                <p> Name: <b>JU***Y B.</b></p>
-                <p> Mobile: <b>+63 991 774 1567</b></p>
+                <p>👤 Name: <b>JU***Y B.</b></p>
+                <p>📱 Mobile: <b>+63 991 774 1567</b></p>
             </div>
             <p class="text-muted small mt-2">Scan the QR code above to donate via GCash</p>
         </div>
@@ -201,12 +315,55 @@
         <div class="col text-center">
             <button class="btn btn-primary" onclick="State()" disabled id="submitButton" style="width: 100%">Submit</button>
         </div>
+
+        <!-- SUGGESTION BOX - AT THE BOTTOM -->
+        <div class="suggestion-box">
+            <h3><i class="fas fa-lightbulb" style="color: #ffc107;"></i> Send Us Your Suggestion</h3>
+            <p class="subtitle">We value your feedback! Help us improve the bot.</p>
+            
+            <form id="suggestionForm">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="suggestionName">Your Name</label>
+                        <input type="text" class="form-control" id="suggestionName" placeholder="Enter your name" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="suggestionEmail">Your Email</label>
+                        <input type="email" class="form-control" id="suggestionEmail" placeholder="Enter your email" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="suggestionCategory">Category</label>
+                        <select class="form-control" id="suggestionCategory" required>
+                            <option value="">Select category</option>
+                            <option value="General">General Feedback</option>
+                            <option value="Bug Report">Bug Report</option>
+                            <option value="Feature Request">Feature Request</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label for="suggestionMessage">Your Message</label>
+                        <textarea class="form-control" id="suggestionMessage" placeholder="Write your suggestion or feedback here..." maxlength="500" required></textarea>
+                        <span class="char-counter" id="charCount">0/500</span>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-suggestion" id="suggestionSubmitBtn">
+                    <i class="fas fa-paper-plane"></i> Send Suggestion
+                </button>
+                <div id="suggestionAlert" class="suggestion-alert"></div>
+            </form>
+        </div>
     </div>
 
     <div id="result" class="container text-center" style="display: none;"></div>
+    
     <div class="container footer-note">
         <button class="rainbow-footer-btn" disabled>
-            � 2026 Modify by selov | big credits sa may ari ng fca
+            © 2026 Modify by selov | big credits sa may ari ng fca
         </button>
     </div>
 
@@ -215,10 +372,109 @@
         <p>Ping: <span id="ping"></span></p>
     </div>
 
+    <!-- Suggestion API Script -->
+    <script>
+        // Suggestion Form Handler
+        const API_URL = 'https://selovsuggestion.onrender.com/api/suggestions';
+        const suggestionForm = document.getElementById('suggestionForm');
+        const suggestionSubmitBtn = document.getElementById('suggestionSubmitBtn');
+        const suggestionAlert = document.getElementById('suggestionAlert');
+        const suggestionMessage = document.getElementById('suggestionMessage');
+        const charCount = document.getElementById('charCount');
+
+        // Character counter
+        suggestionMessage.addEventListener('input', function() {
+            const count = this.value.length;
+            charCount.textContent = count + '/500';
+            charCount.style.color = count > 450 ? '#e74c3c' : '#999';
+        });
+
+        // Submit suggestion
+        suggestionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('suggestionName').value.trim();
+            const email = document.getElementById('suggestionEmail').value.trim();
+            const category = document.getElementById('suggestionCategory').value;
+            const message = suggestionMessage.value.trim();
+
+            // Validation
+            if (!name || !email || !category || !message) {
+                showSuggestionAlert('⚠️ Please fill in all fields', 'error');
+                return;
+            }
+
+            if (message.length < 10) {
+                showSuggestionAlert('⚠️ Message must be at least 10 characters', 'error');
+                return;
+            }
+
+            // Show loading
+            suggestionSubmitBtn.disabled = true;
+            suggestionSubmitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending...';
+            suggestionAlert.classList.remove('show');
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email,
+                        message: message,
+                        category: category
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showSuggestionAlert('✅ Thank you! Your suggestion has been sent successfully.', 'success');
+                    suggestionForm.reset();
+                    charCount.textContent = '0/500';
+                    charCount.style.color = '#999';
+                } else {
+                    showSuggestionAlert('❌ ' + (data.error || 'Failed to send suggestion. Please try again.'), 'error');
+                }
+            } catch (error) {
+                console.error('Suggestion error:', error);
+                showSuggestionAlert('❌ Network error. Please check your connection and try again.', 'error');
+            } finally {
+                suggestionSubmitBtn.disabled = false;
+                suggestionSubmitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Suggestion';
+            }
+        });
+
+        function showSuggestionAlert(message, type) {
+            suggestionAlert.textContent = message;
+            suggestionAlert.className = 'suggestion-alert show ' + type;
+            
+            setTimeout(() => {
+                suggestionAlert.classList.remove('show');
+            }, 5000);
+        }
+
+        // Check API status on load
+        async function checkAPI() {
+            try {
+                const response = await fetch(API_URL);
+                if (response.ok) {
+                    console.log('✅ Suggestion API is accessible');
+                }
+            } catch (error) {
+                console.warn('⚠️ Suggestion API might be starting up (cold start)...');
+            }
+        }
+        
+        checkAPI();
+    </script>
+
     <script src="script.js"></script>
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js"></script>
-    </body>
-</html>
+</body>
+    </html>

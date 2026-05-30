@@ -7,35 +7,59 @@ module.exports.config = {
   credits: "selov",
   description: "Send feedback or suggestions to the bot admin",
   commandCategory: "utility",
-  usages: "feedback <your message>",
+  usages: "feedback <name> | <message>",
   cooldowns: 10
 };
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
-  const message = args.join(" ").trim();
+  const input = args.join(" ").trim();
 
-  if (!message) {
+  if (!input) {
     return api.sendMessage(
       "📝 FEEDBACK\n━━━━━━━━━━━━━━━━\n\n" +
       "Send your feedback or suggestions!\n\n" +
-      "Usage: feedback <your message>\n\n" +
+      "Usage: feedback <name> | <message>\n\n" +
       "Examples:\n" +
-      "• feedback Add more game commands\n" +
-      "• feedback The bot is amazing\n" +
-      "• feedback Fix the weather command",
+      "• feedback Juan | Add more game commands\n" +
+      "• feedback Maria | Fix the ai command\n" +
+      "• feedback Pedro | The bot is amazing\n\n" +
+      "Note: Use | to separate name and message",
+      threadID,
+      messageID
+    );
+  }
+
+  // Parse name and message
+  let name = "";
+  let message = "";
+
+  if (input.includes("|")) {
+    const parts = input.split("|");
+    name = parts[0].trim();
+    message = parts.slice(1).join("|").trim();
+  } else {
+    // If no pipe, use whole input as message and auto-detect name
+    message = input;
+  }
+
+  if (!message) {
+    return api.sendMessage(
+      "❌ Please enter a message.\n\nFormat: feedback <name> | <message>",
       threadID,
       messageID
     );
   }
 
   try {
-    // Get sender info
-    let senderName = "Unknown User";
-    try {
-      const user = await api.getUserInfo(senderID);
-      senderName = user[senderID]?.name || "Unknown User";
-    } catch (e) {}
+    // Get sender info for fallback name
+    let senderName = name || "Anonymous";
+    if (!name) {
+      try {
+        const user = await api.getUserInfo(senderID);
+        senderName = user[senderID]?.name || "Anonymous";
+      } catch (e) {}
+    }
 
     // Send processing message
     const processingMsg = await api.sendMessage(
@@ -47,9 +71,9 @@ module.exports.run = async function ({ api, event, args }) {
     const apiUrl = "https://selovsuggestion.onrender.com/";
     
     const response = await axios.post(apiUrl, {
-      uid: senderID,
       name: senderName,
-      feedback: message,
+      message: message,
+      uid: senderID,
       timestamp: new Date().toISOString()
     }, {
       headers: {
@@ -77,6 +101,8 @@ module.exports.run = async function ({ api, event, args }) {
       const fs = require("fs");
       const path = require("path");
       
+      const senderName = name || "Anonymous";
+      
       const dataDir = path.join(__dirname, "..", "data");
       if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
       
@@ -88,9 +114,9 @@ module.exports.run = async function ({ api, event, args }) {
       }
       
       feedbacks.push({
-        uid: senderID,
         name: senderName,
-        feedback: message,
+        message: message,
+        uid: senderID,
         timestamp: new Date().toISOString()
       });
       
@@ -98,7 +124,10 @@ module.exports.run = async function ({ api, event, args }) {
       
       api.sendMessage(
         "⚠️ Feedback server is offline.\n\n" +
-        "Your feedback has been saved locally and will be sent when the server is back.\n\n" +
+        `👤 From: ${senderName}\n` +
+        `💬 Message: "${message}"\n\n` +
+        "Your feedback has been saved locally.\n" +
+        "It will be sent when the server is back.\n\n" +
         "Thank you! 💙",
         threadID,
         messageID

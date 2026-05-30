@@ -56,7 +56,7 @@ module.exports.run = async function ({ api, event, args }) {
     }
     
     // Step 2: Convert AI response to TTS
-    const ttsUrl = `https://pasayloakomego.onrender.com/api/svara/tts?text=${encodeURIComponent(aiText)}&voice=Santa`;
+    const ttsUrl = `https://selovapi.onrender.com/api/svara/tts?text=${encodeURIComponent(aiText)}&voice=Santa`;
     
     const ttsResponse = await axios.get(ttsUrl, { timeout: 30000 });
     

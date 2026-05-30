@@ -58,7 +58,7 @@ module.exports.run = async function ({ api, event, args }) {
     const enhancedPrompt = `You are a loving, sweet, and flirty AI girlfriend named Lily. You're talking to ${senderName}. Be romantic, caring, and playful. Use emojis occasionally. Keep responses warm and personal. Call them pet names like baby, darling, or sweetie sometimes.\n\nConversation history:\n${history}\n\nLily:`;
 
     // Call the API
-    const apiUrl = `https://pasayloakomego.onrender.com/api/mistral/girlfriend?prompt=${encodeURIComponent(enhancedPrompt)}&uid=${senderID}`;
+    const apiUrl = `https://selovapi.onrender.com/api/mistral/girlfriend?prompt=${encodeURIComponent(enhancedPrompt)}&uid=${senderID}`;
     
     const response = await axios.get(apiUrl);
     let reply = response.data;

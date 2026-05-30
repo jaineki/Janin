@@ -21,10 +21,10 @@ module.exports.run = async function ({ api, event, args }) {
     return api.sendMessage(
       "📌 PINTEREST SEARCH\n━━━━━━━━━━━━━━━━\n\n" +
       "Usage: pinterest <search query>\n\n" +
-      "Example:\n" +
+      "Examples:\n" +
       "• pinterest baki\n" +
       "• pinterest anime girl\n" +
-      "• pinterest landscape",
+      "• pinterest nature wallpaper",
       threadID,
       messageID
     );
@@ -32,42 +32,86 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     // Get user info
-    const user = await api.getUserInfo(senderID);
-    const senderName = user[senderID]?.name || "User";
+    let senderName = "User";
+    try {
+      const user = await api.getUserInfo(senderID);
+      senderName = user[senderID]?.name || "User";
+    } catch (e) {}
 
     // Send searching message
-    await api.sendMessage(`🔍 Searching Pinterest for "${query}"... Please wait.`, threadID);
+    const searchingMsg = await api.sendMessage(
+      `🔍 Searching Pinterest for "${query}"... Please wait.`,
+      threadID
+    );
 
-    // Call API
-    const apiUrl = `https://api-ownblox.vercel.app/api/pinterest?q=${encodeURIComponent(query)}`;
-    const response = await axios.get(apiUrl, { timeout: 20000 });
+    // Call the API
+    const apiUrl = `https://sagor.nav.bd/sagor/pin?q=${encodeURIComponent(query)}&limit=6&apikey=sagor`;
+    
+    const response = await axios.get(apiUrl, { 
+      timeout: 20000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36',
+        'Accept': 'application/json'
+      }
+    });
 
-    let data = response.data;
+    let rawData = response.data;
 
-    // Handle different response formats
+    // Debug log
+    console.log("PINTEREST API TYPE:", typeof rawData);
+    console.log("PINTEREST API SAMPLE:", JSON.stringify(rawData).substring(0, 400));
+
     let imageUrls = [];
 
-    if (Array.isArray(data)) {
-      imageUrls = data;
-    } else if (data && typeof data === "object") {
-      imageUrls = data.data || data.result || data.results || 
-                  data.images || data.urls || data.image || [];
+    // Handle different response formats
+    if (typeof rawData === "string") {
+      try {
+        rawData = JSON.parse(rawData);
+      } catch (parseErr) {
+        if (rawData.startsWith("http")) {
+          imageUrls = [rawData];
+        }
+      }
     }
 
-    // If single URL returned, wrap in array
-    if (typeof imageUrls === "string") {
-      imageUrls = [imageUrls];
+    if (Array.isArray(rawData)) {
+      imageUrls = rawData;
+    } else if (rawData && typeof rawData === "object") {
+      // Try all possible keys
+      imageUrls = rawData.data || rawData.result || rawData.results || 
+                  rawData.images || rawData.image || rawData.urls || 
+                  rawData.url || rawData.pins || rawData.items || rawData.response || [];
+      
+      // If nested object
+      if (imageUrls && typeof imageUrls === "object" && !Array.isArray(imageUrls)) {
+        imageUrls = imageUrls.data || imageUrls.result || imageUrls.images || [];
+      }
     }
 
-    // Filter valid URLs only
+    // Handle array of objects with url property
+    if (Array.isArray(imageUrls) && imageUrls.length > 0 && typeof imageUrls[0] === "object") {
+      imageUrls = imageUrls.map(item => {
+        if (typeof item === "string") return item;
+        return item.url || item.image || item.src || item.link || item.pin || item.original || "";
+      });
+    }
+
+    // Filter valid URLs
     imageUrls = imageUrls.filter(url => 
       typeof url === "string" && 
       (url.startsWith("http://") || url.startsWith("https://"))
     );
 
     if (imageUrls.length === 0) {
+      try {
+        await api.unsendMessage(searchingMsg.messageID);
+      } catch (e) {}
+      
       return api.sendMessage(
-        `❌ No images found for "${query}".\nTry a different search term.`,
+        `❌ No images found for "${query}".\n\n` +
+        `API Response Type: ${typeof rawData}\n` +
+        `Sample: ${JSON.stringify(rawData).substring(0, 200)}\n\n` +
+        `Try a different search term.`,
         threadID,
         messageID
       );
@@ -92,7 +136,11 @@ module.exports.run = async function ({ api, event, args }) {
         
         const imgResponse = await axios.get(selectedUrls[i], { 
           responseType: "arraybuffer",
-          timeout: 15000 
+          timeout: 15000,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36',
+            'Referer': 'https://www.pinterest.com/'
+          }
         });
 
         fs.writeFileSync(imgPath, imgResponse.data);
@@ -104,34 +152,58 @@ module.exports.run = async function ({ api, event, args }) {
     }
 
     if (attachments.length === 0) {
-      return api.sendMessage("❌ Failed to download images. Try again later.", threadID, messageID);
+      try {
+        await api.unsendMessage(searchingMsg.messageID);
+      } catch (e) {}
+      
+      return api.sendMessage(
+        "❌ Failed to download images. The URLs might be blocked.\nTry again later.",
+        threadID,
+        messageID
+      );
     }
+
+    // Remove searching message
+    try {
+      await api.unsendMessage(searchingMsg.messageID);
+    } catch (e) {}
 
     // Send images
     api.sendMessage(
       {
-        body: `📌 PINTEREST RESULTS\n━━━━━━━━━━━━━━━━\n\n🔍 Query: "${query}"\n👤 Requested by: ${senderName}\n📸 Images: ${attachments.length}\n\n✨ Powered by Pinterest`,
+        body: `📌 PINTEREST RESULTS\n━━━━━━━━━━━━━━━━\n\n🔍 Query: "${query}"\n👤 Requested by: ${senderName}\n📸 Images: ${attachments.length}/${selectedUrls.length}\n\n✨ Powered by Pinterest`,
         attachment: attachments
       },
       threadID,
       (err) => {
         if (err) console.error("Send error:", err);
-        // Clean up files
-        imgPaths.forEach(p => {
-          try {
-            if (fs.existsSync(p)) fs.unlinkSync(p);
-          } catch (e) {}
-        });
+        // Clean up files after 5 seconds
+        setTimeout(() => {
+          imgPaths.forEach(p => {
+            try { if (fs.existsSync(p)) fs.unlinkSync(p); } catch (e) {}
+          });
+        }, 5000);
       },
       messageID
     );
 
   } catch (err) {
     console.error("Pinterest Error:", err.message);
-    api.sendMessage(
-      `❌ Error: ${err.message}\n\nTry again with a different search.`,
-      threadID,
-      messageID
-    );
+    
+    let errorMsg = `❌ Pinterest Error: ${err.message}`;
+    
+    if (err.response?.status === 404) {
+      errorMsg = "❌ API endpoint not found (404). Check the URL.";
+    } else if (err.response?.status === 500) {
+      errorMsg = "❌ API server error (500). Try again later.";
+    } else if (err.code === "ECONNREFUSED") {
+      errorMsg = "❌ API is currently offline.";
+    } else if (err.code === "ECONNABORTED") {
+      errorMsg = "❌ Request timed out. Try again.";
+    } else if (err.code === "ENOTFOUND") {
+      errorMsg = "❌ API host not found. Check the URL.";
+    }
+    
+    api.sendMessage(errorMsg, threadID, messageID);
   }
 };

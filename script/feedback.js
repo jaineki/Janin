@@ -5,7 +5,7 @@ module.exports.config = {
   version: "1.0.0",
   hasPermssion: 0,
   credits: "selov",
-  description: "send feedback to the bot admin",
+  description: "Send feedback or suggestions to the bot admin",
   commandCategory: "utility",
   usages: "feedback <your message>",
   cooldowns: 10
@@ -13,7 +13,6 @@ module.exports.config = {
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
-
   const message = args.join(" ").trim();
 
   if (!message) {
@@ -21,10 +20,10 @@ module.exports.run = async function ({ api, event, args }) {
       "📝 FEEDBACK\n━━━━━━━━━━━━━━━━\n\n" +
       "Send your feedback or suggestions!\n\n" +
       "Usage: feedback <your message>\n\n" +
-      "Example:\n" +
-      "• feedback add more game commands\n" +
-      "• feedback the bot is amazing\n" +
-      "• feedback fix the weather command",
+      "Examples:\n" +
+      "• feedback Add more game commands\n" +
+      "• feedback The bot is amazing\n" +
+      "• feedback Fix the weather command",
       threadID,
       messageID
     );
@@ -32,8 +31,11 @@ module.exports.run = async function ({ api, event, args }) {
 
   try {
     // Get sender info
-    const user = await api.getUserInfo(senderID);
-    const senderName = user[senderID]?.name || "Unknown User";
+    let senderName = "Unknown User";
+    try {
+      const user = await api.getUserInfo(senderID);
+      senderName = user[senderID]?.name || "Unknown User";
+    } catch (e) {}
 
     // Send processing message
     const processingMsg = await api.sendMessage(
@@ -41,34 +43,72 @@ module.exports.run = async function ({ api, event, args }) {
       threadID
     );
 
-    // Send feedback to API
-    const apiUrl = `https://pasayloakomego.onrender.com/api/feedback?action=submit&type=feedback&message=${encodeURIComponent(message)}&uid=${senderID}&name=${encodeURIComponent(senderName)}`;
+    // POST request to feedback API
+    const apiUrl = "https://selovsuggestion.onrender.com/";
     
-    const response = await axios.get(apiUrl);
-    const data = response.data;
+    const response = await axios.post(apiUrl, {
+      uid: senderID,
+      name: senderName,
+      feedback: message,
+      timestamp: new Date().toISOString()
+    }, {
+      headers: {
+        "Content-Type": "application/json"
+      },
+      timeout: 15000
+    });
 
-    // Build success message
-    let resultMessage = `✅ FEEDBACK SENT\n━━━━━━━━━━━━━━━━\n\n`;
+    // Success
+    let resultMessage = "✅ FEEDBACK SENT\n━━━━━━━━━━━━━━━━\n\n";
     resultMessage += `👤 From: ${senderName}\n`;
     resultMessage += `🆔 UID: ${senderID}\n`;
-    resultMessage += `💬 Message: ${message}\n\n`;
-    resultMessage += `━━━━━━━━━━━━━━━━\n`;
-    resultMessage += `🙏 Thank you for your feedback!\n`;
-    resultMessage += `Your input helps improve the bot. THIS FEEDBACK IS GOING TO OWNER API`;
+    resultMessage += `💬 Message: "${message}"\n\n`;
+    resultMessage += "━━━━━━━━━━━━━━━━\n";
+    resultMessage += "🙏 Thank you for your feedback!\n";
+    resultMessage += "Your input helps improve the bot. 💙";
 
-    // Edit the processing message with the result
-    await api.editMessage(
-      resultMessage,
-      processingMsg.messageID,
-      threadID
-    );
+    await api.editMessage(resultMessage, processingMsg.messageID, threadID);
 
   } catch (err) {
-    console.error(err);
-    api.sendMessage(
-      `❌ Failed to send feedback:\n${err.message}\n\nPlease try again later.`,
-      threadID,
-      messageID
-    );
+    console.error("Feedback Error:", err.message);
+    
+    // If API is down, save locally
+    try {
+      const fs = require("fs");
+      const path = require("path");
+      
+      const dataDir = path.join(__dirname, "..", "data");
+      if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+      
+      const feedbackFile = path.join(dataDir, "feedbacks.json");
+      let feedbacks = [];
+      
+      if (fs.existsSync(feedbackFile)) {
+        feedbacks = JSON.parse(fs.readFileSync(feedbackFile, "utf8"));
+      }
+      
+      feedbacks.push({
+        uid: senderID,
+        name: senderName,
+        feedback: message,
+        timestamp: new Date().toISOString()
+      });
+      
+      fs.writeFileSync(feedbackFile, JSON.stringify(feedbacks, null, 2));
+      
+      api.sendMessage(
+        "⚠️ Feedback server is offline.\n\n" +
+        "Your feedback has been saved locally and will be sent when the server is back.\n\n" +
+        "Thank you! 💙",
+        threadID,
+        messageID
+      );
+    } catch (saveErr) {
+      api.sendMessage(
+        `❌ Error: ${err.message}\n\nPlease try again later.`,
+        threadID,
+        messageID
+      );
+    }
   }
 };

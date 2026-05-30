@@ -18,8 +18,8 @@ module.exports.config = {
 if (!global.aiv3Memory) global.aiv3Memory = {};
 
 // API endpoints
-const CHAT_API = "https://pasayloakomego.onrender.com/api/chatgpt"; // Updated Chat API
-const TTS_API = "https://pasayloakomego.onrender.com/api/api/ai/tsundere";
+const CHAT_API = "https://selovapi.onrender.com/api/chatgpt"; // Updated Chat API
+const TTS_API = "https://selovapi.onrender.com/api/api/ai/tsundere";
 
 module.exports.run = async function ({ api, event, args }) {
   const { threadID, messageID, senderID } = event;
